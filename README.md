@@ -1,10 +1,3 @@
-> **⚠️ Notice**
-> 
-> The ongoing development of this project has moved to [frp-panel](https://github.com/VaalaCat/frp-panel).  
-> All future features and updates will be iterated there!  
-> 
-> frp-panel includes and enhances all the functionality of vorker. Feel free to explore, contribute, and enjoy the improvements!
-
 # Vorker
 
 Vorker is a simple and powerful self host cloudflare worker alternative which built with cloudflare's [workerd](https://github.com/cloudflare/workerd).

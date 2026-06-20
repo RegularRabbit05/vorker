@@ -1,0 +1,262 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PANEL",
+    "meta": {
+        "update_url": null,
+        "version": "PTDL_v2"
+    },
+    "exported_at": "2026-06-20T13:23:00+00:00",
+    "name": "Vorker",
+    "author": "regularrabbit05@github.com",
+    "description": "Vorker is a simple and powerful self-hosted Cloudflare Worker alternative built with Cloudflare's workerd. Provides user authentication, API control, multi worker routing, worker CRUD management, web UI, multi node and HA support.",
+    "features": null,
+    "docker_images": {
+        "ghcr.io/ptero-eggs/yolks:debian": "ghcr.io/ptero-eggs/yolks:debian"
+    },
+    "file_denylist": [],
+    "startup": "./vorker",
+    "config": {
+        "files": "{}",
+        "logs": "{}",
+        "startup": "{\r\n    \"done\": \"starting\"\r\n}",
+        "stop": "^^C"
+    },
+    "scripts": {
+        "installation": {
+            "container": "ghcr.io/ptero-eggs/installers:debian",
+            "entrypoint": "bash",
+            "script": "## Vorker Installscript\r\n\r\n## update system\r\napt update\r\napt -y install --no-install-recommends curl ca-certificates\r\n\r\ncd /mnt/server\r\n\r\n## download vorker binary\r\necho -e \"Downloading Vorker...\"\r\ncurl -sSL -o vorker https://github.com/RegularRabbit05/vorker/releases/latest/download/vorker\r\nchmod +x vorker\r\n\r\n## create workerd directory\r\nmkdir -p /mnt/server/workerd\r\n\r\necho -e \"-------------------------------------------------\"\r\necho -e \"Installation completed\"\r\necho -e \"-------------------------------------------------\""
+        }
+    },
+    "variables": [
+        {
+            "name": "Worker URL Suffix",
+            "description": "Domain suffix appended to each worker's name to form its public URL. The final worker URL becomes SCHEME://WORKER_NAME+WORKER_URL_SUFFIX. For example, if set to .example.com and you have a worker named 'myapp', it will be reachable at http://myapp.example.com. This must match a wildcard DNS record pointing to your server.",
+            "env_variable": "WORKER_URL_SUFFIX",
+            "default_value": ".example.com",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "Scheme",
+            "description": "The URL protocol scheme shown in the web UI and used when constructing public-facing worker URLs. Set to 'https' if your server is behind a TLS-terminating reverse proxy or has SSL configured, otherwise leave as 'http'.",
+            "env_variable": "SCHEME",
+            "default_value": "http",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:http,https",
+            "field_type": "text"
+        },
+        {
+            "name": "API Port",
+            "description": "The port Vorker's admin web UI and REST API listens on. This is the main management interface where you create, edit, and delete workers and manage users. Access it at http://SERVER_IP:API_PORT/admin in your browser.",
+            "env_variable": "API_PORT",
+            "default_value": "8888",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:1024,65535",
+            "field_type": "text"
+        },
+        {
+            "name": "Worker Port",
+            "description": "The port the worker reverse proxy listens on. All deployed workers are served through this port, with routing based on the Host header. Incoming requests to WORKER_NAME+WORKER_URL_SUFFIX on this port are forwarded to the matching workerd process.",
+            "env_variable": "WORKER_PORT",
+            "default_value": "8080",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:1024,65535",
+            "field_type": "text"
+        },
+        {
+            "name": "Cookie Domain",
+            "description": "The domain set on authentication cookies. This controls which domain(s) the browser sends the login cookie to. Should match the domain you use to access the admin UI (e.g. 'example.com'). Set to 'localhost' for local development.",
+            "env_variable": "COOKIE_DOMAIN",
+            "default_value": "localhost",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "Enable Registration",
+            "description": "Controls whether the public registration endpoint is active. When 'true', anyone can create an account via the sign-up page. When 'false', only existing admin users can create new accounts. Recommended to keep 'false' in production for security.",
+            "env_variable": "ENABLE_REGISTER",
+            "default_value": "false",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:true,false",
+            "field_type": "text"
+        },
+        {
+            "name": "JWT Secret",
+            "description": "The secret key used to sign and verify JSON Web Tokens for user authentication sessions. MUST be changed from the default before going to production — use a long random string. If this value changes, all existing user sessions will be invalidated.",
+            "env_variable": "JWT_SECRET",
+            "default_value": "change_me",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "JWT Expire Time",
+            "description": "How long a user's login session stays valid, in hours. After this duration, the user must log in again. Default is 24 hours (1 day). Lower values are more secure but less convenient; higher values keep users logged in longer.",
+            "env_variable": "JWT_EXPIRETIME",
+            "default_value": "24",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:1,720",
+            "field_type": "text"
+        },
+        {
+            "name": "Agent Secret",
+            "description": "A shared secret used to authenticate communication between master and agent nodes, and to derive tunnel credentials. All nodes in the same cluster MUST use the same value. MUST be changed from the default before production use. Also used internally to generate RPC tokens and tunnel username/password.",
+            "env_variable": "AGENT_SECRET",
+            "default_value": "change_me",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "Run Mode",
+            "description": "Determines whether this instance runs as a 'master' or 'agent'. The master node hosts the admin UI, API, and database — there should be exactly one. Agent nodes connect to the master and run workers on behalf of the cluster, allowing horizontal scaling across multiple servers.",
+            "env_variable": "RUN_MODE",
+            "default_value": "master",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:master,agent",
+            "field_type": "text"
+        },
+        {
+            "name": "Node Name",
+            "description": "A unique identifier for this node within the cluster. The master typically uses 'default'. Each agent node MUST have a distinct name (e.g. 'agent-1', 'agent-2') so the master can track and route to them individually.",
+            "env_variable": "NODE_NAME",
+            "default_value": "default",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:100",
+            "field_type": "text"
+        },
+        {
+            "name": "Master Endpoint",
+            "description": "The full URL (including port) of the master node's API. Only relevant when RUN_MODE is 'agent' — this is how the agent discovers and communicates with the master. For single-node setups, leave as default. For multi-node, set to the master's reachable address (e.g. http://master-ip:8888).",
+            "env_variable": "MASTER_ENDPOINT",
+            "default_value": "http://127.0.0.1:8888",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "Listen Address",
+            "description": "The network interface address the server binds to. '0.0.0.0' listens on all interfaces (required for Pterodactyl). '127.0.0.1' would restrict to localhost only. In most cases this should stay as '0.0.0.0'.",
+            "env_variable": "LISTEN_ADDR",
+            "default_value": "0.0.0.0",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|max:50",
+            "field_type": "text"
+        },
+        {
+            "name": "Database Path",
+            "description": "Absolute filesystem path where Vorker stores its SQLite database. This file contains all user accounts, worker configurations, and metadata. It is persisted across restarts. Must be within a directory the container has write access to.",
+            "env_variable": "DB_PATH",
+            "default_value": "/home/container/workerd/db.sqlite",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "Database Type",
+            "description": "The database engine Vorker uses for persistent storage. Currently only 'sqlite' is supported. SQLite is embedded and requires no external database server.",
+            "env_variable": "DB_TYPE",
+            "default_value": "sqlite",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|in:sqlite",
+            "field_type": "text"
+        },
+        {
+            "name": "Workerd Directory",
+            "description": "The directory where Vorker stores workerd runtime data, including worker source files, compiled configs, and capnp configuration files. Each deployed worker gets a subdirectory here. Must be writable by the container.",
+            "env_variable": "WORKERD_DIR",
+            "default_value": "/home/container/workerd",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "Workerd Binary Path",
+            "description": "Absolute path to the Cloudflare workerd binary. Vorker invokes this executable to run each deployed worker as a subprocess. The binary must be present and executable at this path. It is typically placed by the install script.",
+            "env_variable": "WORKERD_BIN_PATH",
+            "default_value": "/home/container/workerd-bin",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "Worker Limit",
+            "description": "The maximum number of workers that can be deployed on this node. Acts as a safeguard to prevent resource exhaustion. Each worker runs as a separate workerd subprocess, so set this based on the server's available memory and CPU.",
+            "env_variable": "WORKER_LIMIT",
+            "default_value": "10000",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:1,100000",
+            "field_type": "text"
+        },
+        {
+            "name": "Cookie Name",
+            "description": "The name of the HTTP cookie used to store the user's authentication JWT token. You only need to change this if it conflicts with another application running on the same domain.",
+            "env_variable": "COOKIE_NAME",
+            "default_value": "authorization",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|max:100",
+            "field_type": "text"
+        },
+        {
+            "name": "Cookie Max Age",
+            "description": "How long the authentication cookie persists in the user's browser, in seconds. After this time the browser discards the cookie and the user must log in again. Default is 86400 (1 day). This is separate from JWT_EXPIRETIME — the shorter of the two effectively controls session length.",
+            "env_variable": "COOKIE_AGE",
+            "default_value": "86400",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:3600,604800",
+            "field_type": "text"
+        },
+        {
+            "name": "Tunnel Entry Port",
+            "description": "The port used by the built-in tunnel reverse proxy on the master node. Agent nodes forward worker traffic through this port. In a multi-node setup, this port must be reachable by all agent nodes.",
+            "env_variable": "TUNNEL_ENTRY_PORT",
+            "default_value": "10080",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:1024,65535",
+            "field_type": "text"
+        },
+        {
+            "name": "Tunnel Host",
+            "description": "The hostname or IP address of the tunnel relay server. For master nodes, set to '127.0.0.1' (connects to itself). For agent nodes, set to the master's public IP or hostname so the agent can establish a tunnel connection back to the master.",
+            "env_variable": "TUNNEL_HOST",
+            "default_value": "127.0.0.1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "Tunnel API Port",
+            "description": "The port for the tunnel relay control API. Used internally for tunnel management between master and agent nodes. Agents connect to this port on the master to register themselves and coordinate traffic forwarding.",
+            "env_variable": "TUNNEL_API_PORT",
+            "default_value": "18080",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:1024,65535",
+            "field_type": "text"
+        }
+    ]
+}
